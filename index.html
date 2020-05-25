@@ -183,7 +183,7 @@
 
 			console.log(newSheet.result.spreadsheetUrl);
 
-			// let sheetId = "1jIQPFdEpOwIuZTwYO5Jnn-CAHD9anMxX8jr3flhHmwg";
+			let sheetId = newSheet.result.spreadsheetId;
 
 			let newRange = `A1:C8`;
 
@@ -197,10 +197,6 @@
 					majorDimension: "ROWS",
 					values: dataFrame,
 				}
-			);
-
-			console.log(
-				`https://docs.google.com/spreadsheets/d/${sheetId}/edit`
 			);
 		}
 

@@ -1,14 +1,17 @@
 {
-  "name": "blenderdata-vis",
-  "version": "1.0.0",
-  "description": "Analyze blender benchmark data",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "cors-anywhere": "^0.4.3"
-  }
+	"name": "blenderdata-vis",
+	"version": "1.0.0",
+	"description": "Analyze blender benchmark data",
+	"main": "index.js",
+	"scripts": {
+		"serve": "node ."
+	},
+	"author": "k-donn",
+	"repository": {
+		"url": "https://github.com/k-donn/blenderdata-vis"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"cors-anywhere": "^0.4.3"
+	}
 }
