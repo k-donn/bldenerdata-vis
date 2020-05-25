@@ -1,0 +1,320 @@
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1, shrink-to-fit=no"
+		/>
+		<script
+			type="text/javascript"
+			src="https://www.gstatic.com/charts/loader.js"
+		></script>
+
+		<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+		<link
+			rel="stylesheet"
+			href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+			integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+			crossorigin="anonymous"
+		/>
+	</head>
+	<body>
+		<div class="container">
+			<pre id="content" style="white-space: pre-wrap;"></pre>
+
+			<div id="auth-btns">
+				<button
+					class="btn btn-primary mx-auto"
+					id="authorize_button"
+					style="display: none;"
+				>
+					Authorize
+				</button>
+				<button
+					class="btn btn-danger mx-auto"
+					id="signout_button"
+					style="display: none;"
+				>
+					Sign Out
+				</button>
+			</div>
+
+			<form style="display: none;" id="device-input">
+				<div class="form-group">
+					<label for="device1-input">Device 1</label>
+					<input
+						class="form-control"
+						id="device1-input"
+						aria-describedby="dev1-help"
+						placeholder="Tesla T4"
+					/>
+					<small id="dev1-help" class="form-text text-muted"
+						>See devices at
+						<a href="https://opendata.blender.org/"
+							>opendata.blender.org</a
+						></small
+					>
+				</div>
+				<div class="form-group">
+					<label for="device2-input">Device 2</label>
+					<input
+						class="form-control"
+						id="device2-input"
+						placeholder="AMD Ryzen 9 3900X 12-Core Processor"
+					/>
+				</div>
+				<button
+					type="submit"
+					id="device-submit"
+					class="btn btn-primary"
+				>
+					Submit
+				</button>
+			</form>
+
+			<div
+				id="chart_div"
+				class="mx-auto"
+				style="width: 900px; height: 500px;"
+			></div>
+		</div>
+	</body>
+	<script type="text/javascript">
+		google.charts.load("current", { packages: ["corechart"] });
+		// google.charts.setOnLoadCallback(getBlenderData);
+		let chartDiv = document.getElementById("chart_div");
+
+		async function getBlenderData(device1, device2) {
+			// let device1 = "Tesla T4";
+			// let device2 = "AMD Ryzen 9 3900X 12-Core Processor";
+			let res = await axios.get(
+				`http://localhost:8080/https://opendata.blender.org/benchmarks/query/?device_name=${device1.replace(
+					" ",
+					"+"
+				)}&amp;device_name=${device2.replace(
+					" ",
+					"+"
+				)}&amp;group_by=benchmark&amp;group_by=device_name&amp;response_type=datatables`
+			);
+
+			let gpuPerf = res.data;
+
+			let header = ["Scene", device1, device2];
+
+			let device1Scenes = gpuPerf.rows
+				.filter((row) => row[1] === device1)
+				.map((row) => row[0]);
+
+			let device2Scenes = gpuPerf.rows
+				.filter((row) => row[1] === device1)
+				.map((row) => row[0]);
+
+			let commonScenes = device1Scenes.filter((value) =>
+				device2Scenes.includes(value)
+			);
+
+			let sceneMap = {};
+			for (
+				let sceneIndex = 0;
+				sceneIndex < commonScenes.length;
+				sceneIndex++
+			) {
+				let scene = commonScenes[sceneIndex];
+				sceneMap[scene] = [];
+			}
+
+			for (let trial = 0; trial < gpuPerf.rows.length; trial++) {
+				let perf = gpuPerf.rows[trial];
+				if (perf[1] === device1 && commonScenes.includes(perf[0])) {
+					sceneMap[perf[0]].push(perf[2]);
+				}
+			}
+			for (let trial = 0; trial < gpuPerf.rows.length; trial++) {
+				let perf = gpuPerf.rows[trial];
+				if (perf[1] === device2 && commonScenes.includes(perf[0])) {
+					sceneMap[perf[0]].push(perf[2]);
+				}
+			}
+
+			let formattedPerf = [];
+			for (let scene in sceneMap) {
+				if (sceneMap.hasOwnProperty(scene)) {
+					formattedPerf.push([scene, ...sceneMap[scene]]);
+				}
+			}
+
+			let dataFrame = [header, ...formattedPerf];
+
+			drawVisualization(dataFrame, device1, device2);
+			uploadData(dataFrame, device1, device2);
+		}
+
+		function drawVisualization(comparison, device1, device2) {
+			// Some raw data (not necessarily accurate)
+			let data = google.visualization.arrayToDataTable(comparison);
+
+			let options = {
+				title: `${device1} vs. ${device2}`,
+				vAxis: { title: "Median Render Time (ms)" },
+				hAxis: { title: "Scene" },
+				seriesType: "bars",
+			};
+
+			let chart = new google.visualization.ComboChart(chartDiv);
+			chart.draw(data, options);
+		}
+
+		async function uploadData(dataFrame, device1, device2) {
+			let newSheet = await gapi.client.sheets.spreadsheets.create(
+				{},
+				{
+					properties: {
+						title: "Comparing GPUs in Blender",
+					},
+					sheets: [
+						{
+							properties: {
+								title: `${device1} vs. ${device2}`,
+							},
+						},
+					],
+				}
+			);
+
+			console.log(newSheet.result.spreadsheetUrl);
+
+			// let sheetId = "1jIQPFdEpOwIuZTwYO5Jnn-CAHD9anMxX8jr3flhHmwg";
+
+			let newRange = `A1:C8`;
+
+			let updateRes = await gapi.client.sheets.spreadsheets.values.update(
+				{
+					spreadsheetId: sheetId,
+					range: newRange,
+					valueInputOption: "USER_ENTERED",
+				},
+				{
+					majorDimension: "ROWS",
+					values: dataFrame,
+				}
+			);
+
+			console.log(
+				`https://docs.google.com/spreadsheets/d/${sheetId}/edit`
+			);
+		}
+
+		// Client ID and API key from the Developer Console
+		let CLIENT_ID =
+			"43431957706-6t4f102rc70h377q3djhltv5dlopqcdd.apps.googleusercontent.com";
+		let API_KEY = "AIzaSyA8K_PwnCATqssqaMcc0yu5bMtFt43drMU";
+
+		// Array of API discovery doc URLs for APIs used by the quickstart
+		let DISCOVERY_DOCS = [
+			"https://sheets.googleapis.com/$discovery/rest?version=v4",
+		];
+
+		// Authorization scopes required by the API; multiple scopes can be
+		// included, separated by spaces.
+		let SCOPES = "https://www.googleapis.com/auth/spreadsheets";
+
+		let authorizeButton = document.getElementById("authorize_button");
+		let signoutButton = document.getElementById("signout_button");
+		let submitForm = document.getElementById("device-input");
+
+		/**
+		 *  On load, called to load the auth2 library and API client library.
+		 */
+		function handleClientLoad() {
+			gapi.load("client:auth2", initClient);
+		}
+
+		/**
+		 *  Initializes the API client library and sets up sign-in state
+		 *  listeners.
+		 */
+		function initClient() {
+			gapi.client
+				.init({
+					apiKey: API_KEY,
+					clientId: CLIENT_ID,
+					discoveryDocs: DISCOVERY_DOCS,
+					scope: SCOPES,
+				})
+				.then(
+					function () {
+						// Listen for sign-in state changes.
+						gapi.auth2
+							.getAuthInstance()
+							.isSignedIn.listen(updateSigninStatus);
+
+						// Handle the initial sign-in state.
+						updateSigninStatus(
+							gapi.auth2.getAuthInstance().isSignedIn.get()
+						);
+						authorizeButton.onclick = handleAuthClick;
+						signoutButton.onclick = handleSignoutClick;
+					},
+					function (error) {
+						appendPre(JSON.stringify(error, null, 2));
+					}
+				);
+		}
+
+		/**
+		 *  Called when the signed in status changes, to update the UI
+		 *  appropriately. After a sign-in, the API is called.
+		 */
+		function updateSigninStatus(isSignedIn) {
+			if (isSignedIn) {
+				authorizeButton.style.display = "none";
+				signoutButton.style.display = "block";
+				submitForm.style.display = "block";
+				submitForm.addEventListener("submit", (e) => {
+					e.preventDefault();
+					let dev1 = submitForm.children[0].children[1].value;
+					let dev2 = submitForm.children[1].children[1].value;
+					getBlenderData(dev1, dev2);
+				});
+			} else {
+				authorizeButton.style.display = "block";
+				signoutButton.style.display = "none";
+				submitForm.style.display = "none";
+			}
+		}
+
+		/**
+		 *  Sign in the user upon button click.
+		 */
+		function handleAuthClick(event) {
+			gapi.auth2.getAuthInstance().signIn();
+		}
+
+		/**
+		 *  Sign out the user upon button click.
+		 */
+		function handleSignoutClick(event) {
+			chartDiv.innerHTML = "";
+			gapi.auth2.getAuthInstance().signOut();
+		}
+
+		/**
+		 * Append a pre element to the body containing the given message
+		 * as its text node. Used to display the results of the API call.
+		 *
+		 * @param {string} message Text to be placed in pre element.
+		 */
+		function appendPre(message) {
+			let pre = document.getElementById("content");
+			let textContent = document.createTextNode(message + "\n");
+			pre.appendChild(textContent);
+		}
+	</script>
+	<script
+		async
+		defer
+		src="https://apis.google.com/js/api.js"
+		onload="this.onload=function(){};handleClientLoad()"
+		onreadystatechange="if (this.readyState === 'complete') this.onload()"
+	></script>
+</html>
