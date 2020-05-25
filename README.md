@@ -13,7 +13,7 @@ A Combo Chart is shown in the browser and the data is uploaded to the user's goo
 
 The license for my code is [LICENSE](./LICENSE).
 
-The license for the Blender data is [LICENSE.txt](./LICENSE.txt)
+The license for the Blender data is [CC0](https://creativecommons.org/share-your-work/public-domain/cc0/)
 
 ## TODO
 
