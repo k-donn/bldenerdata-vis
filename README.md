@@ -9,6 +9,12 @@ A Combo Chart is shown in the browser and the data is uploaded to the user's goo
 1.  `npm install`
 2.  `node index.js`
 
+## Meta
+
+The license for my code is [LICENSE](./LICENSE).
+
+The license for the Blender data is [LICENSE.txt](./LICENSE.txt)
+
 ## TODO
 
 -   Device name autocomplete
