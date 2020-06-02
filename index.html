@@ -17,29 +17,57 @@
 			integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
 			crossorigin="anonymous"
 		/>
+		<style>
+			.autocomplete {
+				/*the container must be positioned relative:*/
+				position: relative;
+				display: inline-block;
+			}
+			input {
+				border: 1px solid transparent;
+				background-color: #f1f1f1;
+				padding: 10px;
+				font-size: 16px;
+			}
+			input[type="text"] {
+				background-color: #f1f1f1;
+				width: 100%;
+			}
+			input[type="submit"] {
+				background-color: DodgerBlue;
+				color: #fff;
+			}
+			.autocomplete-items {
+				position: absolute;
+				border: 1px solid #d4d4d4;
+				border-bottom: none;
+				border-top: none;
+				z-index: 99;
+				/*position the autocomplete items to be the same width as the container:*/
+				top: 100%;
+				left: 0;
+				right: 0;
+			}
+			.autocomplete-items div {
+				padding: 10px;
+				cursor: pointer;
+				background-color: #fff;
+				border-bottom: 1px solid #d4d4d4;
+			}
+			.autocomplete-items div:hover {
+				/*when hovering an item:*/
+				background-color: #e9e9e9;
+			}
+			.autocomplete-active {
+				/*when navigating through the items using the arrow keys:*/
+				background-color: DodgerBlue !important;
+				color: #ffffff;
+			}
+		</style>
 	</head>
 	<body>
 		<div class="container">
-			<pre id="content" style="white-space: pre-wrap;"></pre>
-
-			<div id="auth-btns">
-				<button
-					class="btn btn-primary mx-auto"
-					id="authorize_button"
-					style="display: none;"
-				>
-					Authorize
-				</button>
-				<button
-					class="btn btn-danger mx-auto"
-					id="signout_button"
-					style="display: none;"
-				>
-					Sign Out
-				</button>
-			</div>
-
-			<form style="display: none;" id="device-input">
+			<form autocomplete="off" id="device-input">
 				<div class="form-group">
 					<label for="device1-input">Device 1</label>
 					<input
@@ -81,21 +109,24 @@
 	</body>
 	<script type="text/javascript">
 		google.charts.load("current", { packages: ["corechart"] });
-		// google.charts.setOnLoadCallback(getBlenderData);
+		google.charts.setOnLoadCallback(registerEvents);
 		let chartDiv = document.getElementById("chart_div");
+		let submitBtn = document.getElementById("device-input");
+		let dev1 = document.getElementById("device1-input");
+		let dev2 = document.getElementById("device2-input");
+
+		function registerEvents() {
+			submitBtn.addEventListener("submit", (e) => {
+				e.preventDefault();
+				getBlenderData(dev1.value, dev2.value);
+			});
+		}
 
 		async function getBlenderData(device1, device2) {
-			// let device1 = "Tesla T4";
-			// let device2 = "AMD Ryzen 9 3900X 12-Core Processor";
-			let res = await axios.get(
-				`http://localhost:8080/https://opendata.blender.org/benchmarks/query/?device_name=${device1.replace(
-					" ",
-					"+"
-				)}&amp;device_name=${device2.replace(
-					" ",
-					"+"
-				)}&amp;group_by=benchmark&amp;group_by=device_name&amp;response_type=datatables`
+			let finalUrl = encodeURI(
+				`https://opendata.blender.org/benchmarks/query/?device_name=${device1}&device_name=${device2}&group_by=benchmark&group_by=device_name&response_type=datatables`
 			);
+			let res = await axios.get(`http://localhost:8080/${finalUrl}`);
 
 			let gpuPerf = res.data;
 
@@ -146,7 +177,6 @@
 			let dataFrame = [header, ...formattedPerf];
 
 			drawVisualization(dataFrame, device1, device2);
-			uploadData(dataFrame, device1, device2);
 		}
 
 		function drawVisualization(comparison, device1, device2) {
@@ -164,153 +194,129 @@
 			chart.draw(data, options);
 		}
 
-		async function uploadData(dataFrame, device1, device2) {
-			let newSheet = await gapi.client.sheets.spreadsheets.create(
-				{},
-				{
-					properties: {
-						title: "Comparing GPUs in Blender",
-					},
-					sheets: [
-						{
-							properties: {
-								title: `${device1} vs. ${device2}`,
-							},
-						},
-					],
+		function autocomplete(inp, arr) {
+			/*the autocomplete function takes two arguments,
+  the text field element and an array of possible autocompleted values:*/
+			var currentFocus;
+			/*execute a function when someone writes in the text field:*/
+			inp.addEventListener("input", function (e) {
+				var a,
+					b,
+					i,
+					val = this.value;
+				/*close any already open lists of autocompleted values*/
+				closeAllLists();
+				if (!val) {
+					return false;
 				}
-			);
-
-			console.log(newSheet.result.spreadsheetUrl);
-
-			let sheetId = newSheet.result.spreadsheetId;
-
-			let newRange = `A1:C8`;
-
-			let updateRes = await gapi.client.sheets.spreadsheets.values.update(
-				{
-					spreadsheetId: sheetId,
-					range: newRange,
-					valueInputOption: "USER_ENTERED",
-				},
-				{
-					majorDimension: "ROWS",
-					values: dataFrame,
-				}
-			);
-		}
-
-		// Client ID and API key from the Developer Console
-		let CLIENT_ID =
-			"43431957706-6t4f102rc70h377q3djhltv5dlopqcdd.apps.googleusercontent.com";
-		let API_KEY = "AIzaSyA8K_PwnCATqssqaMcc0yu5bMtFt43drMU";
-
-		// Array of API discovery doc URLs for APIs used by the quickstart
-		let DISCOVERY_DOCS = [
-			"https://sheets.googleapis.com/$discovery/rest?version=v4",
-		];
-
-		// Authorization scopes required by the API; multiple scopes can be
-		// included, separated by spaces.
-		let SCOPES = "https://www.googleapis.com/auth/spreadsheets";
-
-		let authorizeButton = document.getElementById("authorize_button");
-		let signoutButton = document.getElementById("signout_button");
-		let submitForm = document.getElementById("device-input");
-
-		/**
-		 *  On load, called to load the auth2 library and API client library.
-		 */
-		function handleClientLoad() {
-			gapi.load("client:auth2", initClient);
-		}
-
-		/**
-		 *  Initializes the API client library and sets up sign-in state
-		 *  listeners.
-		 */
-		function initClient() {
-			gapi.client
-				.init({
-					apiKey: API_KEY,
-					clientId: CLIENT_ID,
-					discoveryDocs: DISCOVERY_DOCS,
-					scope: SCOPES,
-				})
-				.then(
-					function () {
-						// Listen for sign-in state changes.
-						gapi.auth2
-							.getAuthInstance()
-							.isSignedIn.listen(updateSigninStatus);
-
-						// Handle the initial sign-in state.
-						updateSigninStatus(
-							gapi.auth2.getAuthInstance().isSignedIn.get()
-						);
-						authorizeButton.onclick = handleAuthClick;
-						signoutButton.onclick = handleSignoutClick;
-					},
-					function (error) {
-						appendPre(JSON.stringify(error, null, 2));
+				currentFocus = -1;
+				/*create a DIV element that will contain the items (values):*/
+				a = document.createElement("DIV");
+				a.setAttribute("id", this.id + "autocomplete-list");
+				a.setAttribute("class", "autocomplete-items");
+				/*append the DIV element as a child of the autocomplete container:*/
+				this.parentNode.appendChild(a);
+				/*for each item in the array...*/
+				for (i = 0; i < arr.length; i++) {
+					/*check if the item starts with the same letters as the text field value:*/
+					if (
+						arr[i].substr(0, val.length).toUpperCase() ==
+						val.toUpperCase()
+					) {
+						/*create a DIV element for each matching element:*/
+						b = document.createElement("DIV");
+						/*make the matching letters bold:*/
+						b.innerHTML =
+							"<strong>" +
+							arr[i].substr(0, val.length) +
+							"</strong>";
+						b.innerHTML += arr[i].substr(val.length);
+						/*insert a input field that will hold the current array item's value:*/
+						b.innerHTML +=
+							"<input type='hidden' value='" + arr[i] + "'>";
+						/*execute a function when someone clicks on the item value (DIV element):*/
+						b.addEventListener("click", function (e) {
+							/*insert the value for the autocomplete text field:*/
+							inp.value = this.getElementsByTagName(
+								"input"
+							)[0].value;
+							/*close the list of autocompleted values,
+              (or any other open lists of autocompleted values:*/
+							closeAllLists();
+						});
+						a.appendChild(b);
 					}
-				);
-		}
-
-		/**
-		 *  Called when the signed in status changes, to update the UI
-		 *  appropriately. After a sign-in, the API is called.
-		 */
-		function updateSigninStatus(isSignedIn) {
-			if (isSignedIn) {
-				authorizeButton.style.display = "none";
-				signoutButton.style.display = "block";
-				submitForm.style.display = "block";
-				submitForm.addEventListener("submit", (e) => {
+				}
+			});
+			/*execute a function presses a key on the keyboard:*/
+			inp.addEventListener("keydown", function (e) {
+				var x = document.getElementById(this.id + "autocomplete-list");
+				if (x) x = x.getElementsByTagName("div");
+				if (e.keyCode == 40) {
+					/*If the arrow DOWN key is pressed,
+        increase the currentFocus variable:*/
+					currentFocus++;
+					/*and and make the current item more visible:*/
+					addActive(x);
+				} else if (e.keyCode == 38) {
+					//up
+					/*If the arrow UP key is pressed,
+        decrease the currentFocus variable:*/
+					currentFocus--;
+					/*and and make the current item more visible:*/
+					addActive(x);
+				} else if (e.keyCode == 13) {
+					/*If the ENTER key is pressed, prevent the form from being submitted,*/
 					e.preventDefault();
-					let dev1 = submitForm.children[0].children[1].value;
-					let dev2 = submitForm.children[1].children[1].value;
-					getBlenderData(dev1, dev2);
-				});
-			} else {
-				authorizeButton.style.display = "block";
-				signoutButton.style.display = "none";
-				submitForm.style.display = "none";
+					if (currentFocus > -1) {
+						/*and simulate a click on the "active" item:*/
+						if (x) x[currentFocus].click();
+					}
+				}
+			});
+			function addActive(x) {
+				/*a function to classify an item as "active":*/
+				if (!x) return false;
+				/*start by removing the "active" class on all items:*/
+				removeActive(x);
+				if (currentFocus >= x.length) currentFocus = 0;
+				if (currentFocus < 0) currentFocus = x.length - 1;
+				/*add class "autocomplete-active":*/
+				x[currentFocus].classList.add("autocomplete-active");
 			}
+			function removeActive(x) {
+				/*a function to remove the "active" class from all autocomplete items:*/
+				for (var i = 0; i < x.length; i++) {
+					x[i].classList.remove("autocomplete-active");
+				}
+			}
+			function closeAllLists(elmnt) {
+				/*close all autocomplete lists in the document,
+    except the one passed as an argument:*/
+				var x = document.getElementsByClassName("autocomplete-items");
+				for (var i = 0; i < x.length; i++) {
+					if (elmnt != x[i] && elmnt != inp) {
+						x[i].parentNode.removeChild(x[i]);
+					}
+				}
+			}
+			/*execute a function when someone clicks in the document:*/
+			document.addEventListener("click", function (e) {
+				closeAllLists(e.target);
+			});
 		}
 
-		/**
-		 *  Sign in the user upon button click.
-		 */
-		function handleAuthClick(event) {
-			gapi.auth2.getAuthInstance().signIn();
-		}
-
-		/**
-		 *  Sign out the user upon button click.
-		 */
-		function handleSignoutClick(event) {
-			chartDiv.innerHTML = "";
-			gapi.auth2.getAuthInstance().signOut();
-		}
-
-		/**
-		 * Append a pre element to the body containing the given message
-		 * as its text node. Used to display the results of the API call.
-		 *
-		 * @param {string} message Text to be placed in pre element.
-		 */
-		function appendPre(message) {
-			let pre = document.getElementById("content");
-			let textContent = document.createTextNode(message + "\n");
-			pre.appendChild(textContent);
-		}
+		autocomplete(document.getElementById("device1-input"), [
+			"AMD Ryzen 7 3700X 8-Core Processor",
+			"AMD Ryzen 9 3900X 12-Core Processor",
+			"GeForce RTX 2080 Ti",
+			"GeForce GTX 1080 Ti",
+			"GeForce RTX 2070 SUPER",
+			"GeForce GTX 1080",
+			"AMD Ryzen 9 3950X 16-Core Processor",
+			"Intel Core i9-9900K CPU @ 3.60GHz",
+			"GeForce RTX 2080 SUPER",
+			"GeForce GTX 1070",
+		]);
 	</script>
-	<script
-		async
-		defer
-		src="https://apis.google.com/js/api.js"
-		onload="this.onload=function(){};handleClientLoad()"
-		onreadystatechange="if (this.readyState === 'complete') this.onload()"
-	></script>
 </html>
