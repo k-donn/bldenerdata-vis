@@ -2,21 +2,13 @@
 
 This app compares two devices used for [Blender Benchmark](https://opendata.blender.org/).
 
-A Combo Chart is shown in the browser and the data is uploaded to the user's google sheets for more analysis.
+Input the device names into the field and a visualization appears showing the render times for scenes for each device.
 
 ## Running
 
-1.  `npm install`
+1.  `npm install` (only needs `cors-anywhere`)
 2.  `node index.js`
-
-## Meta
-
-The license for my code is [LICENSE](./LICENSE).
-
-The license for the Blender data is [CC0](https://creativecommons.org/share-your-work/public-domain/cc0/)
 
 ## TODO
 
--   Device name autocomplete
--   Device name validation
--   Move data locally instead of querying Blender
+-   Query data locally instead of querying Blender

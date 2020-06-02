@@ -2,9 +2,9 @@
 	"name": "blenderdata-vis",
 	"version": "1.0.0",
 	"description": "Analyze blender benchmark data",
-	"main": "index.js",
+	"main": "server.js",
 	"scripts": {
-		"serve": "node ."
+		"serve": "node server.js"
 	},
 	"author": "k-donn",
 	"repository": {
