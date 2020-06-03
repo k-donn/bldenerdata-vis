@@ -98,11 +98,10 @@
 			preventEnter: true,
 			events: {
 				search: async function (qry, callback, origJQEl) {
-					// let url = encodeURI(
-					// 	`https://opendata.blender.org/benchmarks/query/suggest/?column=device_name&expression=${qry}`
-					// );
 					let devices = await axios.get(
-						`http://localhost:5500/suggest?q=${encodeURIComponent(qry)}`
+						`http://localhost:5500/suggest?q=${encodeURIComponent(
+							qry
+						)}`
 					);
 
 					callback(devices.data.map((device) => device.value));
@@ -111,60 +110,68 @@
 		});
 
 		async function getBlenderData(device1, device2) {
-			let finalUrl = encodeURI(
-				`https://opendata.blender.org/benchmarks/query/?device_name=${device1}&device_name=${device2}&group_by=benchmark&group_by=device_name&response_type=datatables`
+			// let finalUrl = encodeURI(
+			// 	`https://opendata.blender.org/benchmarks/query/?device_name=${device1}&device_name=${device2}&group_by=benchmark&group_by=device_name&response_type=datatables`
+			// );
+			let res = await axios.get(
+				`http://localhost:5500/info?dev1=${device1}&dev2=${device2}`
 			);
-			let res = await axios.get(`http://localhost:8080/${finalUrl}`);
 
-			let gpuPerf = res.data;
+			let benchmarks = res.data;
 
 			let header = ["Scene", device1, device2];
 
-			let device1Scenes = gpuPerf.rows
-				.filter((row) => row[1] === device1)
-				.map((row) => row[0]);
+			console.log(benchmarks);
 
-			let device2Scenes = gpuPerf.rows
-				.filter((row) => row[1] === device2)
-				.map((row) => row[0]);
+			let dataFrame = [];
 
-			let commonScenes = device1Scenes.filter((value) =>
-				device2Scenes.includes(value)
-			);
+			
 
-			let sceneMap = {};
-			for (
-				let sceneIndex = 0;
-				sceneIndex < commonScenes.length;
-				sceneIndex++
-			) {
-				let scene = commonScenes[sceneIndex];
-				sceneMap[scene] = [];
-			}
+			// let device1Scenes = gpuPerf.rows
+			// 	.filter((row) => row[1] === device1)
+			// 	.map((row) => row[0]);
 
-			for (let trial = 0; trial < gpuPerf.rows.length; trial++) {
-				let perf = gpuPerf.rows[trial];
-				if (perf[1] === device1 && commonScenes.includes(perf[0])) {
-					sceneMap[perf[0]].push(perf[2]);
-				}
-			}
-			for (let trial = 0; trial < gpuPerf.rows.length; trial++) {
-				let perf = gpuPerf.rows[trial];
-				if (perf[1] === device2 && commonScenes.includes(perf[0])) {
-					sceneMap[perf[0]].push(perf[2]);
-				}
-			}
+			// let device2Scenes = gpuPerf.rows
+			// 	.filter((row) => row[1] === device2)
+			// 	.map((row) => row[0]);
 
-			let formattedPerf = [];
-			for (let scene in sceneMap) {
-				if (sceneMap.hasOwnProperty(scene)) {
-					formattedPerf.push([scene, ...sceneMap[scene]]);
-				}
-			}
+			// let commonScenes = device1Scenes.filter((value) =>
+			// 	device2Scenes.includes(value)
+			// );
 
-			let dataFrame = [header, ...formattedPerf];
+			// let sceneMap = {};
+			// for (
+			// 	let sceneIndex = 0;
+			// 	sceneIndex < commonScenes.length;
+			// 	sceneIndex++
+			// ) {
+			// 	let scene = commonScenes[sceneIndex];
+			// 	sceneMap[scene] = [];
+			// }
 
-			drawVisualization(dataFrame, device1, device2);
+			// for (let trial = 0; trial < gpuPerf.rows.length; trial++) {
+			// 	let perf = gpuPerf.rows[trial];
+			// 	if (perf[1] === device1 && commonScenes.includes(perf[0])) {
+			// 		sceneMap[perf[0]].push(perf[2]);
+			// 	}
+			// }
+			// for (let trial = 0; trial < gpuPerf.rows.length; trial++) {
+			// 	let perf = gpuPerf.rows[trial];
+			// 	if (perf[1] === device2 && commonScenes.includes(perf[0])) {
+			// 		sceneMap[perf[0]].push(perf[2]);
+			// 	}
+			// }
+
+			// let formattedPerf = [];
+			// for (let scene in sceneMap) {
+			// 	if (sceneMap.hasOwnProperty(scene)) {
+			// 		formattedPerf.push([scene, ...sceneMap[scene]]);
+			// 	}
+			// }
+
+			// let dataFrame = [header, ...formattedPerf];
+
+			// drawVisualization(dataFrame, device1, device2);
 		}
 
 		function drawVisualization(comparison, device1, device2) {

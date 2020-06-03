@@ -42,6 +42,8 @@ let server = http.createServer((req, res) => {
 		});
 		let queries = querystring.parse(parsedUrl.query);
 		let devices = [];
+		// TODO
+		// Figure out how to use wildcards in prepared statements
 		let stmt =
 			"SELECT `device` FROM `blender` WHERE `device` LIKE '%" +
 			queries.q +
@@ -57,9 +59,91 @@ let server = http.createServer((req, res) => {
 				let obj = { value: row };
 				devices.push(obj);
 			});
-			console.log(devices);
 
 			res.write(JSON.stringify(devices));
+			res.end();
+		});
+	}
+	if (parsedUrl.pathname === "/info") {
+		res.writeHead(200, {
+			"Content-Type": "application/json; charset=utf-8",
+		});
+		let queries = querystring.parse(parsedUrl.query);
+		let benchmarks = {};
+		let stmt = "SELECT * FROM `blender` WHERE `device` = ? OR `device` = ?";
+		db.all(stmt, [queries.dev1, queries.dev2], (err, rows) => {
+			if (err) {
+				res.end();
+				return console.error(err);
+			}
+			// Groups all the scene for each device under device name.
+			let grouped = rows.reduce((acc, curr) => {
+				if (!acc.hasOwnProperty(curr.device)) {
+					acc[curr.device] = [];
+				}
+				acc[curr.device].push({
+					scene: curr.scene,
+					time: curr.time,
+				});
+				return acc;
+			}, {});
+
+			// The times for each scene for device1.
+			let dev1Times = grouped[queries.dev1].reduce((acc, curr) => {
+				if (!acc.hasOwnProperty(curr.scene)) {
+					acc[curr.scene] = [];
+				}
+				acc[curr.scene].push(curr.time);
+				return acc;
+			}, {});
+
+			// The times for each scene for device2.
+			let dev2Times = grouped[queries.dev2].reduce((acc, curr) => {
+				if (!acc.hasOwnProperty(curr.scene)) {
+					acc[curr.scene] = [];
+				}
+				acc[curr.scene].push(curr.time);
+				return acc;
+			}, {});
+
+			let dev1Avgs = {};
+			for (let scene in dev1Times) {
+				if (
+					dev1Times.hasOwnProperty(scene) &&
+					dev2Times.hasOwnProperty(scene)
+				) {
+					let sum = dev1Times[scene].reduce(
+						(curr, acc) => curr + acc,
+						0
+					);
+					let len = dev1Times[scene].length;
+					dev1Avgs[scene] = sum / len;
+				}
+			}
+
+			let dev2Avgs = {};
+			for (let scene in dev2Times) {
+				// Get common scenes
+				if (
+					dev1Times.hasOwnProperty(scene) &&
+					dev2Times.hasOwnProperty(scene)
+				) {
+					let sum = dev2Times[scene].reduce(
+						(curr, acc) => curr + acc,
+						0
+					);
+					let len = dev2Times[scene].length;
+					dev2Avgs[scene] = sum / len;
+				}
+			}
+
+			let dev1 = queries.dev1;
+			let dev2 = queries.dev2;
+
+			benchmarks[dev1] = dev1Avgs;
+			benchmarks[dev2] = dev2Avgs;
+
+			res.write(JSON.stringify(benchmarks));
 			res.end();
 		});
 	}
