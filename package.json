@@ -12,7 +12,6 @@
 	},
 	"license": "MIT",
 	"dependencies": {
-		"cors-anywhere": "^0.4.3",
 		"sqlite3": "^4.2.0"
 	}
 }

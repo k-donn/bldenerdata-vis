@@ -11,4 +11,4 @@ Input the device names into the field and a visualization appears showing the re
 
 ## TODO
 
--   Query data locally instead of querying Blender
+-   Parallelize database writing
