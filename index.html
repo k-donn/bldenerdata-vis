@@ -98,11 +98,11 @@
 			preventEnter: true,
 			events: {
 				search: async function (qry, callback, origJQEl) {
-					let url = encodeURI(
-						`https://opendata.blender.org/benchmarks/query/suggest/?column=device_name&expression=${qry}`
-					);
+					// let url = encodeURI(
+					// 	`https://opendata.blender.org/benchmarks/query/suggest/?column=device_name&expression=${qry}`
+					// );
 					let devices = await axios.get(
-						`http://localhost:8080/${url}`
+						`http://localhost:5500/suggest?q=${encodeURIComponent(qry)}`
 					);
 
 					callback(devices.data.map((device) => device.value));

@@ -6,7 +6,7 @@ Input the device names into the field and a visualization appears showing the re
 
 ## Running
 
-1.  `npm install` (only needs `cors-anywhere`)
+1.  `npm install`
 2.  `node index.js`
 
 ## TODO
