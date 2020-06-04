@@ -10,12 +10,14 @@ Must have [git-lfs](https://git-lfs.github.com/) configured.
 
 ## Running
 
-1.  `cd data`
-2.  `./get/sh`
-3.  `cd ..`
-4.  `npm install`
-5.  `node server.js`
+1.  `npm install`
+2.  `cd data`
+3.  `./get/sh`
+4.  `cd ..`
+5.  `node parse.js`
+6.  `node server.js`
 
 ## TODO
 
+-   Create github workflow to pull latest data daily.
 -   Create a publicPath system like WebPack, so requests from index.html go to the hosting server not localhost.
