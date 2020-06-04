@@ -6,7 +6,7 @@ let Database = require("better-sqlite3");
 let db = new Database("./data/blender-opendata.db");
 
 // Listen on a specific host via the HOST environment variable
-let host = process.env.HOST || "0.0.0.0";
+let host = process.env.HOST || "127.0.0.1";
 // Listen on a specific port via the PORT environment variable
 let port = process.env.PORT || 8080;
 
@@ -27,17 +27,17 @@ let server = http.createServer((req, res) => {
 		res.writeHead(200, {
 			"Content-Type": "application/json; charset=utf-8",
 		});
+
 		let queries = querystring.parse(parsedUrl.query);
 		let devices = [];
-		// TODO
-		// Figure out how to use wildcards in prepared statements
+
 		let getDevices = db.prepare(
-			"SELECT `device` FROM `blender` WHERE `device` LIKE '%" +
-				queries.q +
-				"%'"
+			"SELECT `device` FROM `blender` WHERE `device` LIKE ?"
 		);
-		let rows = getDevices.all();
+
+		let rows = getDevices.all(`%${queries.q}%`);
 		let names = rows.map((row) => row.device);
+
 		names = [...new Set(names)];
 		names.forEach((row) => {
 			let obj = { value: row };
@@ -51,12 +51,20 @@ let server = http.createServer((req, res) => {
 		res.writeHead(200, {
 			"Content-Type": "application/json; charset=utf-8",
 		});
+
 		let queries = querystring.parse(parsedUrl.query);
 		let benchmarks = {};
+
 		let getDevices = db.prepare(
 			"SELECT * FROM `blender` WHERE `device` = ? OR `device` = ?"
 		);
 		let rows = getDevices.all(queries.dev1, queries.dev2);
+
+		if (rows.length === 0) {
+			res.write(JSON.stringify({ error: "No results" }));
+			res.end();
+			return;
+		}
 		// Groups all the scene for each device under device name.
 		let grouped = rows.reduce((acc, curr) => {
 			// Go through the data and make an object for each device
@@ -135,7 +143,7 @@ let server = http.createServer((req, res) => {
 });
 
 server.listen(port, host, () => {
-	console.log("Running web server on " + host + ":" + port);
+	console.log(`Running web server on ${host}:${port}`);
 });
 
 process.on("SIGINT", () => {
