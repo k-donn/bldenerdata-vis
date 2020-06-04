@@ -1,5 +1,6 @@
 .DS_STORE
 *.sql
+v123.json
 
 .vscode/
 node_modules/
