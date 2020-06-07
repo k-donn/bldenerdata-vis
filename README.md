@@ -12,7 +12,7 @@ Must have [git-lfs](https://git-lfs.github.com/) configured.
 
 1.  `npm install`
 2.  `cd data`
-3.  `./get/sh`
+3.  `./get.sh`
 4.  `cd ..`
 5.  `node parse.js`
 6.  `node server.js`
