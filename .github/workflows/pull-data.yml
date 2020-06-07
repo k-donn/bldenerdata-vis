@@ -3,7 +3,7 @@ name: Pull Latest Data
 
 on:
   schedule:
-    - cron: '24 3 * * *'
+    - cron: '28 2 * * 7'
 
 jobs:
   build:
