@@ -20,7 +20,7 @@
 		<style></style>
 	</head>
 	<body>
-		<div class="container">
+		<div class="container my-2">
 			<form autocomplete="off" id="device-input">
 				<div class="form-group">
 					<label for="device1-input">Device 1</label>
@@ -47,13 +47,15 @@
 					Submit
 				</button>
 			</form>
-
+		</div>
+		<div class="container-fluid overflow-auto">
 			<div
-				id="chart_div"
+				id="chart-div"
 				class="mx-auto"
 				style="width: 900px; height: 500px;"
 			></div>
 		</div>
+		<hr class="my-3"/>
 	</body>
 	<script
 		src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
@@ -75,14 +77,16 @@
 		google.charts.load("current", { packages: ["corechart"] });
 		google.charts.setOnLoadCallback(registerEvents);
 
-		let chartDiv = document.getElementById("chart_div");
+		let chartDiv = document.getElementById("chart-div");
 		let submitBtn = document.getElementById("device-input");
 
 		let dev1 = document.getElementById("device1-input");
 		let dev2 = document.getElementById("device2-input");
 
+		let host = "http://127.0.0.1:8080";
+
 		function registerEvents() {
-			submitBtn.addEventListener("submit", (e) => {
+			submitBtn.addEventListener("submit", e => {
 				e.preventDefault();
 				getBlenderData(dev1.value, dev2.value);
 			});
@@ -91,21 +95,21 @@
 		$(".basicAutoComplete").autoComplete({
 			preventEnter: true,
 			events: {
-				search: async function (qry, callback, origJQEl) {
+				search: async function(qry, callback, origJQEl) {
 					let devices = await axios.get(
-						`http://localhost:8080/suggest?q=${encodeURIComponent(
+						`${host}/blender-vis/suggest?q=${encodeURIComponent(
 							qry
 						)}`
 					);
 
-					callback(devices.data.map((device) => device.value));
-				},
-			},
+					callback(devices.data.map(device => device.value));
+				}
+			}
 		});
 
 		async function getBlenderData(device1, device2) {
 			let res = await axios.get(
-				`http://localhost:8080/info?dev1=${encodeURIComponent(
+				`${host}/blender-vis/info?dev1=${encodeURIComponent(
 					device1
 				)}&dev2=${encodeURIComponent(device2)}`
 			);
@@ -144,7 +148,7 @@
 				title: `${device1} vs. ${device2}`,
 				vAxis: { title: "Median Render Time (ms)" },
 				hAxis: { title: "Scene" },
-				seriesType: "bars",
+				seriesType: "bars"
 			};
 
 			let chart = new google.visualization.ComboChart(chartDiv);

@@ -3,7 +3,7 @@ let querystring = require("querystring");
 let url = require("url");
 let fs = require("fs");
 let Database = require("better-sqlite3");
-let db = new Database("./data/blender-opendata.db");
+let db = new Database("./data/blender-opendata.db", { verbose: console.info });
 
 // Listen on a specific host via the HOST environment variable
 let host = process.env.HOST || "127.0.0.1";
@@ -25,7 +25,7 @@ let server = http.createServer((req, res) => {
 	}
 	if (parsedUrl.pathname === "/suggest") {
 		res.writeHead(200, {
-			"Content-Type": "application/json; charset=utf-8",
+			"Content-Type": "application/json; charset=utf-8"
 		});
 
 		let queries = querystring.parse(parsedUrl.query);
@@ -36,10 +36,10 @@ let server = http.createServer((req, res) => {
 		);
 
 		let rows = getDevices.all(`%${queries.q}%`);
-		let names = rows.map((row) => row.device);
+		let names = rows.map(row => row.device);
 
 		names = [...new Set(names)];
-		names.forEach((row) => {
+		names.forEach(row => {
 			let obj = { value: row };
 			devices.push(obj);
 		});
@@ -49,7 +49,7 @@ let server = http.createServer((req, res) => {
 	}
 	if (parsedUrl.pathname === "/info") {
 		res.writeHead(200, {
-			"Content-Type": "application/json; charset=utf-8",
+			"Content-Type": "application/json; charset=utf-8"
 		});
 
 		let queries = querystring.parse(parsedUrl.query);
@@ -74,7 +74,7 @@ let server = http.createServer((req, res) => {
 			// Append to that object an array of objects corresponding to trials
 			acc[curr.device].push({
 				scene: curr.scene,
-				time: curr.time,
+				time: curr.time
 			});
 			return acc;
 		}, {});
