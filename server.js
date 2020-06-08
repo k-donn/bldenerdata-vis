@@ -14,10 +14,13 @@ let server = http.createServer((req, res) => {
 	let parsedUrl = url.parse(req.url);
 
 	if (parsedUrl.pathname === "/") {
-		fs.readFile("index.html", (err, body) => {
+		fs.readFile("index.html", "utf-8", (err, body) => {
 			if (err) {
+				res.writeHead(500);
+				res.end();
 				return console.error("Error reading file:", err);
 			}
+
 			res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
 			res.write(body);
 			res.end();
@@ -25,7 +28,7 @@ let server = http.createServer((req, res) => {
 	}
 	if (parsedUrl.pathname === "/suggest") {
 		res.writeHead(200, {
-			"Content-Type": "application/json; charset=utf-8"
+			"Content-Type": "application/json; charset=utf-8",
 		});
 
 		let queries = querystring.parse(parsedUrl.query);
@@ -36,10 +39,10 @@ let server = http.createServer((req, res) => {
 		);
 
 		let rows = getDevices.all(`%${queries.q}%`);
-		let names = rows.map(row => row.device);
+		let names = rows.map((row) => row.device);
 
 		names = [...new Set(names)];
-		names.forEach(row => {
+		names.forEach((row) => {
 			let obj = { value: row };
 			devices.push(obj);
 		});
@@ -49,7 +52,7 @@ let server = http.createServer((req, res) => {
 	}
 	if (parsedUrl.pathname === "/info") {
 		res.writeHead(200, {
-			"Content-Type": "application/json; charset=utf-8"
+			"Content-Type": "application/json; charset=utf-8",
 		});
 
 		let queries = querystring.parse(parsedUrl.query);
@@ -74,7 +77,7 @@ let server = http.createServer((req, res) => {
 			// Append to that object an array of objects corresponding to trials
 			acc[curr.device].push({
 				scene: curr.scene,
-				time: curr.time
+				time: curr.time,
 			});
 			return acc;
 		}, {});
@@ -138,6 +141,17 @@ let server = http.createServer((req, res) => {
 		benchmarks[dev2] = dev2Avgs;
 
 		res.write(JSON.stringify(benchmarks));
+		res.end();
+	}
+	if (parsedUrl.pathname === "/random/device") {
+		res.writeHead(200, {
+			"Content-Type": "application/json; charset=utf-8",
+		});
+		let randomDev = db.prepare(
+			"SELECT `device` FROM `blender` ORDER BY RANDOM() LIMIT 1;"
+		);
+
+		res.write(JSON.stringify(randomDev.get()));
 		res.end();
 	}
 });

@@ -28,7 +28,6 @@
 						id="device1-input"
 						class="form-control basicAutoComplete"
 						aria-describedby="dev1-help"
-						placeholder="Tesla T4"
 					/>
 				</div>
 				<div class="form-group">
@@ -36,7 +35,6 @@
 					<input
 						class="form-control basicAutoComplete"
 						id="device2-input"
-						placeholder="AMD Ryzen 9 3900X 12-Core Processor"
 					/>
 				</div>
 				<button
@@ -55,7 +53,7 @@
 				style="width: 900px; height: 500px;"
 			></div>
 		</div>
-		<hr class="my-3"/>
+		<hr class="my-3" />
 	</body>
 	<script
 		src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
@@ -85,8 +83,16 @@
 
 		let host = "http://127.0.0.1:8080";
 
-		function registerEvents() {
-			submitBtn.addEventListener("submit", e => {
+		async function getRandomDevice() {
+			let res = await axios.get(`${host}/random/device`);
+
+			return res.data.device;
+		}
+
+		async function registerEvents() {
+			dev1.placeholder = await getRandomDevice();
+			dev2.placeholder = await getRandomDevice();
+			submitBtn.addEventListener("submit", (e) => {
 				e.preventDefault();
 				getBlenderData(dev1.value, dev2.value);
 			});
@@ -95,26 +101,31 @@
 		$(".basicAutoComplete").autoComplete({
 			preventEnter: true,
 			events: {
-				search: async function(qry, callback, origJQEl) {
+				search: async function (qry, callback, origJQEl) {
 					let devices = await axios.get(
-						`${host}/blender-vis/suggest?q=${encodeURIComponent(
-							qry
-						)}`
+						`${host}/suggest?q=${encodeURIComponent(qry)}`
 					);
 
-					callback(devices.data.map(device => device.value));
-				}
-			}
+					callback(devices.data.map((device) => device.value));
+				},
+			},
 		});
 
 		async function getBlenderData(device1, device2) {
 			let res = await axios.get(
-				`${host}/blender-vis/info?dev1=${encodeURIComponent(
+				`${host}/info?dev1=${encodeURIComponent(
 					device1
 				)}&dev2=${encodeURIComponent(device2)}`
 			);
 
 			let benchmarks = res.data;
+
+			if (benchmarks.error) {
+				chartDiv.append(
+					document.createTextNode("No results for devices")
+				);
+				return;
+			}
 
 			let dataFrame = [];
 			dataFrame.push(["Scene", device1, device2]);
@@ -148,7 +159,7 @@
 				title: `${device1} vs. ${device2}`,
 				vAxis: { title: "Median Render Time (ms)" },
 				hAxis: { title: "Scene" },
-				seriesType: "bars"
+				seriesType: "bars",
 			};
 
 			let chart = new google.visualization.ComboChart(chartDiv);
