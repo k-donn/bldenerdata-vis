@@ -10,26 +10,33 @@ let host = process.env.HOST || "127.0.0.1";
 // Listen on a specific port via the PORT environment variable
 let port = process.env.PORT || 8080;
 
+let JSON_CONTENT = {
+	"Content-Type": "application/json; charset=utf-8",
+};
+
+let TEXT_CONTENT = {
+	"Content-Type": "text/plain; charset=utf-8",
+};
+
 let server = http.createServer((req, res) => {
 	let parsedUrl = url.parse(req.url);
 
 	if (parsedUrl.pathname === "/") {
 		fs.readFile("index.html", "utf-8", (err, body) => {
 			if (err) {
-				res.writeHead(500);
+				res.writeHead(500, "File Problem", TEXT_CONTENT);
+				res.write("Server file read error");
 				res.end();
 				return console.error("Error reading file:", err);
 			}
 
-			res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+			res.writeHead(200);
 			res.write(body);
 			res.end();
 		});
 	}
 	if (parsedUrl.pathname === "/suggest") {
-		res.writeHead(200, {
-			"Content-Type": "application/json; charset=utf-8",
-		});
+		res.writeHead(200, JSON_CONTENT);
 
 		let queries = querystring.parse(parsedUrl.query);
 		let devices = [];
@@ -51,11 +58,17 @@ let server = http.createServer((req, res) => {
 		res.end();
 	}
 	if (parsedUrl.pathname === "/info") {
-		res.writeHead(200, {
-			"Content-Type": "application/json; charset=utf-8",
-		});
-
 		let queries = querystring.parse(parsedUrl.query);
+
+		if (queries.dev1 === queries.dev2) {
+			res.writeHead(400, "Bad request", JSON_CONTENT);
+			res.write(
+				JSON.stringify({ error: "Cannot fetch identical devices" })
+			);
+			res.end();
+			return;
+		}
+
 		let benchmarks = {};
 
 		let getDevices = db.prepare(
@@ -74,7 +87,7 @@ let server = http.createServer((req, res) => {
 			if (!acc.hasOwnProperty(curr.device)) {
 				acc[curr.device] = [];
 			}
-			// Append to that object an array of objects corresponding to trials
+			// Append to that object, an array of objects corresponding to trials
 			acc[curr.device].push({
 				scene: curr.scene,
 				time: curr.time,
@@ -140,13 +153,12 @@ let server = http.createServer((req, res) => {
 		benchmarks[dev1] = dev1Avgs;
 		benchmarks[dev2] = dev2Avgs;
 
+		res.writeHead(200, JSON_CONTENT);
 		res.write(JSON.stringify(benchmarks));
 		res.end();
 	}
 	if (parsedUrl.pathname === "/random/device") {
-		res.writeHead(200, {
-			"Content-Type": "application/json; charset=utf-8",
-		});
+		res.writeHead(200, JSON_CONTENT);
 		let randomDev = db.prepare(
 			"SELECT `device` FROM `blender` ORDER BY RANDOM() LIMIT 1;"
 		);

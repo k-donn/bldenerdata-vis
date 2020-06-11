@@ -102,9 +102,16 @@
 			preventEnter: true,
 			events: {
 				search: async function (qry, callback, origJQEl) {
-					let devices = await axios.get(
-						`${host}/suggest?q=${encodeURIComponent(qry)}`
-					);
+					let devices;
+					try {
+						devices = await axios.get(
+							`${host}/suggest?q=${encodeURIComponent(qry)}`
+						);
+					} catch (err) {
+						return chartDiv.append(
+							document.createTextNode(err.response.data.error)
+						);
+					}
 
 					callback(devices.data.map((device) => device.value));
 				},
@@ -112,20 +119,20 @@
 		});
 
 		async function getBlenderData(device1, device2) {
-			let res = await axios.get(
-				`${host}/info?dev1=${encodeURIComponent(
-					device1
-				)}&dev2=${encodeURIComponent(device2)}`
-			);
+			let res;
+			try {
+				res = await axios.get(
+					`${host}/info?dev1=${encodeURIComponent(
+						device1
+					)}&dev2=${encodeURIComponent(device2)}`
+				);
+			} catch (err) {
+				return chartDiv.append(
+					document.createTextNode(err.response.data.error)
+				);
+			}
 
 			let benchmarks = res.data;
-
-			if (benchmarks.error) {
-				chartDiv.append(
-					document.createTextNode("No results for devices")
-				);
-				return;
-			}
 
 			let dataFrame = [];
 			dataFrame.push(["Scene", device1, device2]);
