@@ -4,7 +4,8 @@
 	"description": "Analyze blender benchmark data",
 	"main": "server.js",
 	"scripts": {
-		"serve": "node server.js"
+		"serve": "node server.js",
+		"parse": "node parse.js"
 	},
 	"author": "k-donn",
 	"repository": {
