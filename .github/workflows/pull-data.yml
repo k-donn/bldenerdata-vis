@@ -2,7 +2,7 @@ name: Pull Latest Data
 
 on:
   schedule:
-    - cron: "0 7 * * *"
+    - cron: "0 7 * * 1"
 
 jobs:
   build:
