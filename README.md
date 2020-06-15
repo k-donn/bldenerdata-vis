@@ -17,3 +17,5 @@ Must have [git-lfs](https://git-lfs.github.com/) configured.
 [http://127.0.0.1:8080/](http://127.0.0.1:8080/)
 
 ## TODO
+
+-   Expand front-end to be able to compare >2 devices.

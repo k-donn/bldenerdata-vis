@@ -40,7 +40,7 @@ let server = http.createServer((req, res) => {
 		res.writeHead(200, JSON_CONTENT);
 
 		let queries = querystring.parse(parsedUrl.query);
-		let devices = [];
+		let suggestions = [];
 
 		let getDevices = db.prepare(
 			"SELECT `device` FROM `blender` WHERE `device` LIKE ?"
@@ -52,29 +52,37 @@ let server = http.createServer((req, res) => {
 		names = [...new Set(names)];
 		names.forEach((row) => {
 			let obj = { value: row };
-			devices.push(obj);
+			suggestions.push(obj);
 		});
 
-		res.write(JSON.stringify(devices));
+		res.write(JSON.stringify(suggestions));
 		res.end();
 	}
 
 	if (parsedUrl.pathname === "/info") {
 		let queries = querystring.parse(parsedUrl.query);
+		let devices = Object.values(queries);
 
-		if (queries.dev1 === queries.dev2) {
+		let tooFew = devices.length < 1;
+		let duplicates = devices.length !== new Set(devices).size;
+		if (tooFew || duplicates) {
 			res.writeHead(400, "Bad request", JSON_CONTENT);
 			res.write(
-				JSON.stringify({ error: "Cannot fetch identical devices" })
+				JSON.stringify({
+					error: tooFew
+						? "Too few devices requested"
+						: "Cannot fetch identical devices",
+				})
 			);
 			res.end();
 			return;
 		}
 
 		let getDevices = db.prepare(
-			"SELECT * FROM `blender` WHERE `device` = ? OR `device` = ?"
+			"SELECT * FROM `blender` WHERE `device` = ?" +
+				" OR `device` = ?".repeat(devices.length - 1)
 		);
-		let rows = getDevices.all(queries.dev1, queries.dev2);
+		let rows = getDevices.all(...devices);
 
 		if (rows.length === 0) {
 			res.write(JSON.stringify({ error: "No results" }));
@@ -84,97 +92,90 @@ let server = http.createServer((req, res) => {
 
 		// We need to create a datatable where the columns correspond to devices and rows to scenes
 
-		// TODO: refactor these to one that accepts string param
-		let devEqual = (to) => (val) => val.device === to;
-		let typeEqual = (to) => (val) => val.type === to;
-		let sceneEqual = (to) => (val) => val.scene === to;
+		let equalProp = (prop) => (val) => (obj) => obj[prop] === val;
 		let devType = (bench) => bench.type;
+		let prop = (prop) => (obj) => obj[prop];
 
-		// TODO: refactor to one statement that pushes together both arrays
-		// then finds uniques in array
-		let dev1Scenes = [
-			...new Set(
-				rows.filter(devEqual(queries.dev1)).map((bench) => bench.scene)
-			),
-		];
-		let dev2Scenes = [
-			...new Set(
-				rows.filter(devEqual(queries.dev2)).map((bench) => bench.scene)
-			),
-		];
-		let commonScenes = dev1Scenes.filter((scene) =>
-			dev2Scenes.includes(scene)
-		);
+		// Find the unqiue scenes for each device then add frequency to hash-map
+		let sceneFreq = {};
+		for (let device of devices) {
+			let deviceScenes = [
+				...new Set(
+					rows.filter(equalProp("device")(device)).map(prop("scene"))
+				),
+			];
+			for (let scene of deviceScenes) {
+				if (!sceneFreq[scene]) {
+					sceneFreq[scene] = 1;
+				} else {
+					sceneFreq[scene] += 1;
+				}
+			}
+		}
 
-		// TODO: refactor same as above
-		let dev1Types = [
-			...new Set(rows.filter(devEqual(queries.dev1)).map(devType)),
-		];
-		let dev2Types = [
-			...new Set(rows.filter(devEqual(queries.dev2)).map(devType)),
-		];
+		// Find scenes whose frequency is equal to the number of devices
+		let commonScenes = [];
+		for (let scene in sceneFreq) {
+			if (sceneFreq.hasOwnProperty(scene)) {
+				let freq = sceneFreq[scene];
+				if (freq === devices.length) {
+					commonScenes.push(scene);
+				}
+			}
+		}
+
+		let devicesTypes = {};
+		for (const device of devices) {
+			devicesTypes[device] = [
+				...new Set(
+					rows.filter(equalProp("device")(device)).map(devType)
+				),
+			];
+		}
 
 		let dataFrame = {};
+		let header = ["Scene"];
 
+		// Go row by row for each scene, append the data for each device-type combo
 		for (let i = 0; i < commonScenes.length; i++) {
 			let scene = commonScenes[i];
 			dataFrame[scene] = [scene];
 
-			// TODO: create an array of devices and iterate over it
-			// Find types for device in the iteration of device array
-			for (let dev1 = 0; dev1 < dev1Types.length; dev1++) {
-				let type = dev1Types[dev1];
+			// Iterate through all the device-type values for this scene
+			for (let device in devicesTypes) {
+				if (devicesTypes.hasOwnProperty(device)) {
+					let types = devicesTypes[device];
+					for (let type of types) {
+						// All benchmarks with this scene, device, and type
+						let benchmarks = rows
+							.filter(equalProp("scene")(scene))
+							.filter(equalProp("device")(device))
+							.filter(equalProp("type")(type));
 
-				// All benchmarks with this scene, device, and type
-				let benchmarks = rows
-					.filter(sceneEqual(scene))
-					.filter(devEqual(queries.dev1))
-					.filter(typeEqual(type));
+						if (benchmarks.length === 0) {
+							dataFrame[scene].push(0);
+						} else {
+							let timeSum = benchmarks.reduce(
+								(acc, curr) => acc + curr.time,
+								0
+							);
 
-				if (benchmarks.length === 0) {
-					dataFrame[scene].push(0);
-				} else {
-					let timeSum = benchmarks.reduce(
-						(acc, curr) => acc + curr.time,
-						0
-					);
-
-					dataFrame[scene].push(timeSum / benchmarks.length);
-				}
-			}
-
-			for (let dev2 = 0; dev2 < dev2Types.length; dev2++) {
-				let type = dev2Types[dev2];
-
-				// All benchmarks with this scene, device, and type
-				let benchmarks = rows
-					.filter(sceneEqual(scene))
-					.filter(devEqual(queries.dev2))
-					.filter(typeEqual(type));
-
-				if (benchmarks.length === 0) {
-					dataFrame[scene].push(0);
-				} else {
-					let timeSum = benchmarks.reduce(
-						(acc, curr) => acc + curr.time,
-						0
-					);
-
-					dataFrame[scene].push(timeSum / benchmarks.length);
+							dataFrame[scene].push(timeSum / benchmarks.length);
+						}
+					}
 				}
 			}
 		}
 
-		let header = ["Scene"];
+		// Make the header to describe the data
+		for (let device in devicesTypes) {
+			if (devicesTypes.hasOwnProperty(device)) {
+				let types = devicesTypes[device];
 
-		// Above can be refactored to include this
-		for (let dev1 = 0; dev1 < dev1Types.length; dev1++) {
-			let type = dev1Types[dev1];
-			header.push(`${queries.dev1} (${type})`);
-		}
-		for (let dev2 = 0; dev2 < dev2Types.length; dev2++) {
-			let type = dev2Types[dev2];
-			header.push(`${queries.dev2} (${type})`);
+				for (let type of types) {
+					header.push(`${device} (${type})`);
+				}
+			}
 		}
 
 		let perfValues = Object.values(dataFrame);
