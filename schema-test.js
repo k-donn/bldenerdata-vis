@@ -1,50 +1,43 @@
-let parsed = require("./data/parsed.json");
-let raw = require("./data/raw.json");
+let fs = require("fs");
+let readline = require("readline");
 
-console.log(raw.length);
-console.log(parsed.length)
+let fileStream = fs.createReadStream("./data/raw.jsonl");
 
-// parsed.forEach((trial, i) => {
-// 	if (
-// 		!(
-// 			trial.hasOwnProperty("device") ||
-// 			trial.hasOwnProperty("scene") ||
-// 			trial.hasOwnProperty("time")
-// 		)
-// 	) {
-// 		console.log("Error in parsed JSON");
-// 		console.log(JSON.stringify(trial));
-// 		console.log(i);
-// 	}
-// });
+async function processLines() {
+	let res = [];
 
-// let shown1 = false;
-// let shown2 = false;
-// let shown3 = false;
-// raw.forEach((trial, i) => {
-	// if (trial.schema_version === "v1" && !shown1) {
-	// 	shown1 = true;
-	// 	console.log(JSON.stringify(trial));
-	// }
-	// if (trial.schema_version === "v2" && !shown2) {
-	// 	shown2 = true;
-	// 	console.log(JSON.stringify(trial));
-	// }
-	// if (trial.schema_version === "v3" && !shown3) {
-	// 	shown3 = true;
-	// 	console.log(JSON.stringify(trial));
-	// }
+	let shown1 = false;
+	let shown2 = false;
+	let shown3 = false;
+	// The file is a JSON-L file so it should be processed line-by-line
+	let rl = readline.createInterface({
+		input: fileStream,
+	});
 
-// 	if (trial.schema_version === "v1" || trial.schema_version === "v2") {
-// 		trial.data.scenes.forEach((scene) => {
-// 			let stats = scene.stats;
-// 			if (stats.result === "OK") {
-// 				if (!stats.hasOwnProperty("total_render_time")) {
-// 					console.log("Error in raw JSON v1/2");
-// 					console.log(JSON.stringify(trial));
-// 					console.log(i);
-// 				}
-// 			}
-// 		});
-// 	}
-// });
+	for await (let line of rl) {
+		let bench = JSON.parse(line);
+		if (bench.schema_version === "v1" && !shown1) {
+			shown1 = true;
+			res.push(bench);
+		}
+		if (bench.schema_version === "v2" && !shown2) {
+			shown2 = true;
+			res.push(bench);
+		}
+		if (bench.schema_version === "v3" && !shown3) {
+			shown3 = true;
+			res.push(bench);
+		}
+	}
+
+	return res;
+}
+
+(async () => {
+	try {
+		let selected = await processLines();
+		console.log(JSON.stringify(selected));
+	} catch (err) {
+		console.error(err);
+	}
+})();

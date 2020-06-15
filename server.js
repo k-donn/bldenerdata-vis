@@ -35,6 +35,7 @@ let server = http.createServer((req, res) => {
 			res.end();
 		});
 	}
+
 	if (parsedUrl.pathname === "/suggest") {
 		res.writeHead(200, JSON_CONTENT);
 
@@ -57,6 +58,7 @@ let server = http.createServer((req, res) => {
 		res.write(JSON.stringify(devices));
 		res.end();
 	}
+
 	if (parsedUrl.pathname === "/info") {
 		let queries = querystring.parse(parsedUrl.query);
 
@@ -69,8 +71,6 @@ let server = http.createServer((req, res) => {
 			return;
 		}
 
-		let benchmarks = {};
-
 		let getDevices = db.prepare(
 			"SELECT * FROM `blender` WHERE `device` = ? OR `device` = ?"
 		);
@@ -81,82 +81,109 @@ let server = http.createServer((req, res) => {
 			res.end();
 			return;
 		}
-		// Groups all the scene for each device under device name.
-		let grouped = rows.reduce((acc, curr) => {
-			// Go through the data and make an object for each device
-			if (!acc.hasOwnProperty(curr.device)) {
-				acc[curr.device] = [];
-			}
-			// Append to that object, an array of objects corresponding to trials
-			acc[curr.device].push({
-				scene: curr.scene,
-				time: curr.time,
-			});
-			return acc;
-		}, {});
 
-		// The times for each scene for device1.
-		let dev1Times = grouped[queries.dev1].reduce((acc, curr) => {
-			// Create an object where each key is a scene-name
-			if (!acc.hasOwnProperty(curr.scene)) {
-				acc[curr.scene] = [];
-			}
-			// The value is the array of all times recorded for that scene-name
-			acc[curr.scene].push(curr.time);
-			return acc;
-		}, {});
+		// We need to create a datatable where the columns correspond to devices and rows to scenes
 
-		// The times for each scene for device2.
-		let dev2Times = grouped[queries.dev2].reduce((acc, curr) => {
-			// Create an object where each key is a scene-name
-			if (!acc.hasOwnProperty(curr.scene)) {
-				acc[curr.scene] = [];
-			}
-			// The value is the array of all times recorded for that scene-name
-			acc[curr.scene].push(curr.time);
-			return acc;
-		}, {});
+		// TODO: refactor these to one that accepts string param
+		let devEqual = (to) => (val) => val.device === to;
+		let typeEqual = (to) => (val) => val.type === to;
+		let sceneEqual = (to) => (val) => val.scene === to;
+		let devType = (bench) => bench.type;
 
-		// Average the arrays part of dev1Times keys
-		let dev1Avgs = {};
-		for (let scene in dev1Times) {
-			// Make sure both devices have the scene
-			if (
-				dev1Times.hasOwnProperty(scene) &&
-				dev2Times.hasOwnProperty(scene)
-			) {
-				// Sum all the values part of this one key
-				let sum = dev1Times[scene].reduce((curr, acc) => curr + acc, 0);
-				let len = dev1Times[scene].length;
-				dev1Avgs[scene] = sum / len;
+		// TODO: refactor to one statement that pushes together both arrays
+		// then finds uniques in array
+		let dev1Scenes = [
+			...new Set(
+				rows.filter(devEqual(queries.dev1)).map((bench) => bench.scene)
+			),
+		];
+		let dev2Scenes = [
+			...new Set(
+				rows.filter(devEqual(queries.dev2)).map((bench) => bench.scene)
+			),
+		];
+		let commonScenes = dev1Scenes.filter((scene) =>
+			dev2Scenes.includes(scene)
+		);
+
+		// TODO: refactor same as above
+		let dev1Types = [
+			...new Set(rows.filter(devEqual(queries.dev1)).map(devType)),
+		];
+		let dev2Types = [
+			...new Set(rows.filter(devEqual(queries.dev2)).map(devType)),
+		];
+
+		let dataFrame = {};
+
+		for (let i = 0; i < commonScenes.length; i++) {
+			let scene = commonScenes[i];
+			dataFrame[scene] = [scene];
+
+			// TODO: create an array of devices and iterate over it
+			// Find types for device in the iteration of device array
+			for (let dev1 = 0; dev1 < dev1Types.length; dev1++) {
+				let type = dev1Types[dev1];
+
+				// All benchmarks with this scene, device, and type
+				let benchmarks = rows
+					.filter(sceneEqual(scene))
+					.filter(devEqual(queries.dev1))
+					.filter(typeEqual(type));
+
+				if (benchmarks.length === 0) {
+					dataFrame[scene].push(0);
+				} else {
+					let timeSum = benchmarks.reduce(
+						(acc, curr) => acc + curr.time,
+						0
+					);
+
+					dataFrame[scene].push(timeSum / benchmarks.length);
+				}
+			}
+
+			for (let dev2 = 0; dev2 < dev2Types.length; dev2++) {
+				let type = dev2Types[dev2];
+
+				// All benchmarks with this scene, device, and type
+				let benchmarks = rows
+					.filter(sceneEqual(scene))
+					.filter(devEqual(queries.dev2))
+					.filter(typeEqual(type));
+
+				if (benchmarks.length === 0) {
+					dataFrame[scene].push(0);
+				} else {
+					let timeSum = benchmarks.reduce(
+						(acc, curr) => acc + curr.time,
+						0
+					);
+
+					dataFrame[scene].push(timeSum / benchmarks.length);
+				}
 			}
 		}
 
-		// Average the arrays part of dev2Times keys
-		let dev2Avgs = {};
-		for (let scene in dev2Times) {
-			// Make sure both devices have the scene
-			if (
-				dev1Times.hasOwnProperty(scene) &&
-				dev2Times.hasOwnProperty(scene)
-			) {
-				// Sum all the values part of this one key
-				let sum = dev2Times[scene].reduce((curr, acc) => curr + acc, 0);
-				let len = dev2Times[scene].length;
-				dev2Avgs[scene] = sum / len;
-			}
+		let header = ["Scene"];
+
+		// Above can be refactored to include this
+		for (let dev1 = 0; dev1 < dev1Types.length; dev1++) {
+			let type = dev1Types[dev1];
+			header.push(`${queries.dev1} (${type})`);
+		}
+		for (let dev2 = 0; dev2 < dev2Types.length; dev2++) {
+			let type = dev2Types[dev2];
+			header.push(`${queries.dev2} (${type})`);
 		}
 
-		let dev1 = queries.dev1;
-		let dev2 = queries.dev2;
-
-		benchmarks[dev1] = dev1Avgs;
-		benchmarks[dev2] = dev2Avgs;
+		let perfValues = Object.values(dataFrame);
 
 		res.writeHead(200, JSON_CONTENT);
-		res.write(JSON.stringify(benchmarks));
+		res.write(JSON.stringify([header, ...perfValues]));
 		res.end();
 	}
+
 	if (parsedUrl.pathname === "/random/device") {
 		res.writeHead(200, JSON_CONTENT);
 		let randomDev = db.prepare(
@@ -169,7 +196,7 @@ let server = http.createServer((req, res) => {
 });
 
 server.listen(port, host, () => {
-	console.log(`Running web server on ${host}:${port}`);
+	console.log(`Running web server on http://${host}:${port}/`);
 });
 
 process.on("SIGINT", () => {

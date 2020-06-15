@@ -33,6 +33,7 @@ async function processLineByLine() {
 								? benchmark.data.device_info.compute_devices[0]
 								: benchmark.data.device_info.compute_devices[0]
 										.name,
+						type: benchmark.data.device_info.device_type,
 						scene: scene.name,
 						time: scene.stats.total_render_time,
 					});
@@ -45,6 +46,7 @@ async function processLineByLine() {
 
 				sceneTimes.push({
 					device: run.device_info.compute_devices[0].name,
+					type: run.device_info.compute_devices[0].type,
 					scene: run.scene.label,
 					time: run.stats.total_render_time,
 				});
@@ -65,6 +67,7 @@ async function processLineByLine() {
 		let createTable = db.prepare(
 			`CREATE TABLE IF NOT EXISTS blender (
 				device TEXT,
+				type TEXT,
 				scene TEXT,
 				time REAL
 			)`
@@ -72,15 +75,21 @@ async function processLineByLine() {
 		createTable.run();
 		let deleteRows = db.prepare(`DELETE FROM blender`);
 		deleteRows.run();
-		let putRow = db.prepare("INSERT INTO blender VALUES (?,?,?)");
+		let putRow = db.prepare("INSERT INTO blender VALUES (?,?,?,?)");
 
 		let [sceneTmLen, sceneTimes] = await processLineByLine();
 		fs.writeFile("./data/parsed.json", JSON.stringify(sceneTimes), () => {
 			console.log("Wrote \x1b[33mdata/parsed.json\x1b[0m");
 		});
+
 		let insert = db.transaction((trials) => {
 			for (let trial of trials) {
-				putRow.run(trial["device"], trial["scene"], trial["time"]);
+				putRow.run(
+					trial["device"],
+					trial["type"],
+					trial["scene"],
+					trial["time"]
+				);
 			}
 		});
 

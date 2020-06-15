@@ -50,7 +50,7 @@
 			<div
 				id="chart-div"
 				class="mx-auto"
-				style="width: 900px; height: 500px;"
+				style="width: 1000px; height: 600px;"
 			></div>
 		</div>
 		<hr class="my-3" />
@@ -134,29 +134,7 @@
 
 			let benchmarks = res.data;
 
-			let dataFrame = [];
-			dataFrame.push(["Scene", device1, device2]);
-
-			let sceneMap = {};
-
-			let dev1Perf = benchmarks[device1];
-
-			// Make a map of each scene to an array of both devices' times
-			for (let scene in dev1Perf) {
-				if (!sceneMap.hasOwnProperty(scene)) {
-					sceneMap[scene] = [];
-				}
-				for (let device in benchmarks) {
-					sceneMap[scene].push(benchmarks[device][scene]);
-				}
-			}
-
-			// Combine the scene name with the array of times.
-			for (let scene in sceneMap) {
-				dataFrame.push([scene, ...sceneMap[scene]]);
-			}
-
-			drawVisualization(dataFrame, device1, device2);
+			drawVisualization(benchmarks, device1, device2);
 		}
 
 		function drawVisualization(comparison, device1, device2) {
