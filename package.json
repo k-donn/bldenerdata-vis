@@ -3,6 +3,7 @@
 	"version": "1.0.0",
 	"description": "Analyze blender benchmark data",
 	"main": "server.js",
+	"engines" : { "node" : ">=4.0.0" },
 	"scripts": {
 		"serve": "node server.js",
 		"parse": "cd data && ./get.sh && cd .. && node parse.js"

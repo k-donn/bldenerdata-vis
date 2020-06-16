@@ -3,7 +3,7 @@ let querystring = require("querystring");
 let url = require("url");
 let fs = require("fs");
 let Database = require("better-sqlite3");
-let db = new Database("./data/blender-opendata.db", { verbose: console.info });
+let db = new Database("./data/blender-opendata.db", { verbose: logInfo });
 
 // Listen on a specific host via the HOST environment variable
 let host = process.env.HOST || "127.0.0.1";
@@ -133,6 +133,12 @@ let server = http.createServer((req, res) => {
 			];
 		}
 
+		console.group(`Info request for ${devices.length} device(s)`);
+		console.info(devices);
+		console.info(devicesTypes);
+		console.info(commonScenes);
+		console.groupEnd();
+
 		let dataFrame = {};
 		let header = ["Scene"];
 
@@ -205,3 +211,9 @@ process.on("SIGINT", () => {
 		console.log("Closed webserver");
 	});
 });
+
+function logInfo(params) {
+	console.group(`Incoming request`);
+	console.log(params);
+	console.groupEnd();
+}

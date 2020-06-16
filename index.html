@@ -16,26 +16,24 @@
 			crossorigin="anonymous"
 		/>
 
-		<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+		<script
+			src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"
+			integrity="sha384-3zW4Ss6nBzDaj/vvjP2Qwu5xaWAzOgTSccYj0DfBO/5tDzQksJa+tWrYMlYPM00u"
+			crossorigin="anonymous"
+		></script>
 		<style></style>
 	</head>
 	<body>
 		<div class="container my-2">
-			<form autocomplete="off" id="device-input">
-				<div class="form-group">
-					<label for="device1-input">Device 1</label>
-					<input
-						id="device1-input"
-						class="form-control basicAutoComplete"
-						aria-describedby="dev1-help"
-					/>
-				</div>
-				<div class="form-group">
-					<label for="device2-input">Device 2</label>
-					<input
-						class="form-control basicAutoComplete"
-						id="device2-input"
-					/>
+			<form autocomplete="off" id="device-form">
+				<div id="fields">
+					<div class="form-group">
+						<label for="device-input0">Device 0</label>
+						<input
+							id="device-input0"
+							class="form-control custom-autocomplete"
+						/>
+					</div>
 				</div>
 				<button
 					type="submit"
@@ -45,24 +43,22 @@
 					Submit
 				</button>
 			</form>
+			<button class="btn btn-success" id="add-device">
+				Add device
+			</button>
 		</div>
 		<div class="container-fluid overflow-auto">
 			<div
 				id="chart-div"
 				class="mx-auto"
-				style="width: 1000px; height: 600px;"
+				style="width: 1276px; height: 768px;"
 			></div>
 		</div>
 		<hr class="my-3" />
 	</body>
 	<script
-		src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
-		integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
-		crossorigin="anonymous"
-	></script>
-	<script
-		src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
-		integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+		src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"
+		integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT"
 		crossorigin="anonymous"
 	></script>
 	<script
@@ -70,62 +66,60 @@
 		integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
 		crossorigin="anonymous"
 	></script>
-	<script src="https://cdn.jsdelivr.net/gh/xcash/bootstrap-autocomplete@v2.3.5/dist/latest/bootstrap-autocomplete.min.js"></script>
+	<script
+		src="https://cdn.jsdelivr.net/gh/xcash/bootstrap-autocomplete@v2.3.5/dist/latest/bootstrap-autocomplete.min.js"
+		integrity="sha384-g9cynrQpYP7CeiZuMTmctGqq+WDN7+/mHbMJUTlCJnbk6QW98IjXumFQlRyjf4jx"
+		crossorigin="anonymous"
+	></script>
 	<script type="text/javascript">
 		google.charts.load("current", { packages: ["corechart"] });
 		google.charts.setOnLoadCallback(registerEvents);
 
-		let chartDiv = document.getElementById("chart-div");
-		let submitBtn = document.getElementById("device-input");
-
-		let dev1 = document.getElementById("device1-input");
-		let dev2 = document.getElementById("device2-input");
+		let fields, inputs, chartDiv, submitBtn, addFieldBtn;
 
 		let host = "http://127.0.0.1:8080";
 
-		async function getRandomDevice() {
-			let res = await axios.get(`${host}/random/device`);
+		function registerEvents() {
+			fields = document.getElementById("fields");
+			chartDiv = document.getElementById("chart-div");
+			submitBtn = document.getElementById("device-form");
+			addFieldBtn = document.getElementById("add-device");
 
-			return res.data.device;
-		}
+			inputs = $(`[id^="device-input"]`);
 
-		async function registerEvents() {
-			dev1.placeholder = await getRandomDevice();
-			dev2.placeholder = await getRandomDevice();
+			inputs.each((_, el) => getRandomDevice(el));
+			inputs.each((_, el) => createAutocomplete(el));
+
+			addFieldBtn.addEventListener("click", (e) => {
+				e.preventDefault();
+
+				// Fields are indexed from zero
+				$(fields).append(`<div class="form-group">
+									<label for="device-input${inputs.length}">Device ${inputs.length}</label>
+									<input
+										class="form-control custom-autocomplete"
+										id="device-input${inputs.length}"
+									/>
+								</div>`);
+
+				inputs = $(`[id^="device-input"]`);
+
+				let justCreated = inputs[inputs.length - 1];
+
+				getRandomDevice(justCreated);
+				createAutocomplete(justCreated);
+			});
+
 			submitBtn.addEventListener("submit", (e) => {
 				e.preventDefault();
-				getBlenderData(dev1.value, dev2.value);
+				getBlenderData(inputs.map((i, el) => el.value));
 			});
 		}
 
-		$(".basicAutoComplete").autoComplete({
-			preventEnter: true,
-			events: {
-				search: async function (qry, callback, origJQEl) {
-					let devices;
-					try {
-						devices = await axios.get(
-							`${host}/suggest?q=${encodeURIComponent(qry)}`
-						);
-					} catch (err) {
-						return chartDiv.append(
-							document.createTextNode(err.response.data.error)
-						);
-					}
-
-					callback(devices.data.map((device) => device.value));
-				},
-			},
-		});
-
-		async function getBlenderData(device1, device2) {
+		async function getBlenderData(devices) {
 			let res;
 			try {
-				res = await axios.get(
-					`${host}/info?dev1=${encodeURIComponent(
-						device1
-					)}&dev2=${encodeURIComponent(device2)}`
-				);
+				res = await axios.get(`${host}/info` + createParams(devices));
 			} catch (err) {
 				return chartDiv.append(
 					document.createTextNode(err.response.data.error)
@@ -134,15 +128,69 @@
 
 			let benchmarks = res.data;
 
-			drawVisualization(benchmarks, device1, device2);
+			drawVisualization(benchmarks, devices);
 		}
 
-		function drawVisualization(comparison, device1, device2) {
+		async function getRandomDevice(input) {
+			try {
+				let res = await axios.get(`${host}/random/device`);
+				input.placeholder = res.data.device;
+			} catch (err) {
+				return chartDiv.append(
+					document.createTextNode(err.response.data.error)
+				);
+			}
+		}
+
+		function createAutocomplete(input) {
+			$(input).autoComplete({
+				preventEnter: true,
+				events: {
+					search: async function (qry, callback, origJQEl) {
+						let devices;
+						try {
+							devices = await axios.get(
+								`${host}/suggest?q=${encodeURIComponent(qry)}`
+							);
+
+							callback(
+								devices.data.map((device) => device.value)
+							);
+						} catch (err) {
+							return chartDiv.append(
+								document.createTextNode(err.response.data.error)
+							);
+						}
+					},
+				},
+			});
+		}
+
+		function createTitle(devices) {
+			let res = `${devices[0]}`;
+			for (let i = 1; i < devices.length; i++) {
+				let device = devices[i];
+				res += ` vs. ${device}`;
+			}
+			return res;
+		}
+
+		function createParams(devices) {
+			let res = `?dev0=${devices[0]}`;
+			for (let i = 1; i < devices.length; i++) {
+				let device = devices[i];
+				res += `&dev${i}=${device}`;
+			}
+			return res;
+		}
+
+		function drawVisualization(comparison) {
 			let data = google.visualization.arrayToDataTable(comparison);
 
 			let options = {
-				title: `${device1} vs. ${device2}`,
-				vAxis: { title: "Median Render Time (ms)" },
+				// Supply header of datatable to title
+				title: createTitle(comparison[0].slice(1)),
+				vAxis: { title: "Median Render Time (ms) Lower is better" },
 				hAxis: { title: "Scene" },
 				seriesType: "bars",
 			};

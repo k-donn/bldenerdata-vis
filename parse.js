@@ -25,14 +25,20 @@ async function processLineByLine() {
 			let scenes = benchmark.data.scenes;
 			scenes.forEach((scene) => {
 				if (scene.stats.result === "OK") {
+					let dev =
+						benchmark.schema_version === "v1"
+							? benchmark.data.device_info.compute_devices[0]
+							: benchmark.data.device_info.compute_devices[0]
+									.name;
+
+					if (dev === "") {
+						return;
+					}
+
 					lineNum++;
 
 					sceneTimes.push({
-						device:
-							benchmark.schema_version === "v1"
-								? benchmark.data.device_info.compute_devices[0]
-								: benchmark.data.device_info.compute_devices[0]
-										.name,
+						device: dev,
 						type: benchmark.data.device_info.device_type,
 						scene: scene.name,
 						time: scene.stats.total_render_time,
@@ -42,10 +48,16 @@ async function processLineByLine() {
 		} else {
 			let launches = benchmark.data;
 			launches.forEach((run) => {
+				let dev = run.device_info.compute_devices[0].name;
+
+				if (dev === "") {
+					return;
+				}
+
 				lineNum++;
 
 				sceneTimes.push({
-					device: run.device_info.compute_devices[0].name,
+					device: dev,
 					type: run.device_info.compute_devices[0].type,
 					scene: run.scene.label,
 					time: run.stats.total_render_time,
