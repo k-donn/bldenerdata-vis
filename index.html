@@ -79,6 +79,9 @@
 
 		let host = "http://127.0.0.1:8080";
 
+		/**
+		 * Register the event callbacks to send and receive device data and suggestions.
+		 */
 		function registerEvents() {
 			fields = document.getElementById("fields");
 			chartDiv = document.getElementById("chart-div");
@@ -116,6 +119,11 @@
 			});
 		}
 
+		/**
+		 * Fetch the data table to the devices supplied.
+		 *
+		 * @param {string[]} devices Names of devices to fetch
+		 */
 		async function getBlenderData(devices) {
 			let res;
 			try {
@@ -131,6 +139,12 @@
 			drawVisualization(benchmarks, devices);
 		}
 
+		/**
+		 * Fetch a random device from the database and put
+		 * it in as a placeholder in a form field.
+		 *
+		 * @param {HTMLInputElement} input The field to fill
+		 */
 		async function getRandomDevice(input) {
 			try {
 				let res = await axios.get(`${host}/random/device`);
@@ -142,6 +156,11 @@
 			}
 		}
 
+		/**
+		 * Fill in available device names when typing into a field.
+		 *
+		 * @param {HTMLInputElement} input The field to register
+		 */
 		function createAutocomplete(input) {
 			$(input).autoComplete({
 				preventEnter: true,
@@ -166,6 +185,11 @@
 			});
 		}
 
+		/**
+		 * Create a string showing all devices versus each other.
+		 *
+		 * @param {string[]} devices List of devices
+		 */
 		function createTitle(devices) {
 			let res = `${devices[0]}`;
 			for (let i = 1; i < devices.length; i++) {
@@ -175,15 +199,28 @@
 			return res;
 		}
 
+		/**
+		 * Create a query string that has each of the devices in it.
+		 *
+		 * @param {string[]} devices List of devices
+		 */
 		function createParams(devices) {
-			let res = `?dev0=${devices[0]}`;
+			let params = `?dev0=${devices[0]}`;
 			for (let i = 1; i < devices.length; i++) {
 				let device = devices[i];
-				res += `&dev${i}=${device}`;
+				params += `&dev${i}=${device}`;
 			}
-			return res;
+			return params;
 		}
 
+		/**
+		 * Create the interactive chart in the browser window.
+		 *
+		 * The datatable is an array where each row in the table
+		 *  represents a set of data points with the same x-axis location.
+		 *
+		 * @param {Array<Array<string|number>>} comparison The datatable in Google format
+		 */
 		function drawVisualization(comparison) {
 			let data = google.visualization.arrayToDataTable(comparison);
 

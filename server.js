@@ -212,6 +212,11 @@ process.on("SIGINT", () => {
 	});
 });
 
+/**
+ * Log a pretty output of sqlite requests to the console.
+ *
+ * @param {string} params The output from better-sqlite3
+ */
 function logInfo(params) {
 	console.group(`Incoming request`);
 	console.log(params);

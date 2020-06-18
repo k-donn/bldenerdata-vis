@@ -4,9 +4,12 @@ let readline = require("readline");
 let Database = require("better-sqlite3");
 let db = new Database("./data/blender-opendata.db");
 
-let fileStream = fs.createReadStream("./data/raw.jsonl");
-
-async function processLineByLine() {
+/**
+ * Iterate over a blender benchmark export file and write device info to DB.
+ *
+ * @param {ReadableStream} fileStream The exported blender JSONL file
+ */
+async function processLineByLine(fileStream) {
 	let sceneTimes = [],
 		lineNum = 0;
 
@@ -75,6 +78,8 @@ async function processLineByLine() {
 
 (async () => {
 	try {
+		let fileStream = fs.createReadStream("./data/raw.jsonl");
+
 		// inserting values into the db goes much faster when inside a transaction
 		let createTable = db.prepare(
 			`CREATE TABLE IF NOT EXISTS blender (
@@ -84,16 +89,18 @@ async function processLineByLine() {
 				time REAL
 			)`
 		);
+
 		createTable.run();
 		let deleteRows = db.prepare(`DELETE FROM blender`);
 		deleteRows.run();
 		let putRow = db.prepare("INSERT INTO blender VALUES (?,?,?,?)");
 
-		let [sceneTmLen, sceneTimes] = await processLineByLine();
+		let [sceneTmLen, sceneTimes] = await processLineByLine(fileStream);
 		fs.writeFile("./data/parsed.json", JSON.stringify(sceneTimes), () => {
 			console.log("Wrote \x1b[33mdata/parsed.json\x1b[0m");
 		});
 
+		// The inserting seems to go much faster inside a transaction
 		let insert = db.transaction((trials) => {
 			for (let trial of trials) {
 				putRow.run(

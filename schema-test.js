@@ -3,6 +3,9 @@ let readline = require("readline");
 
 let fileStream = fs.createReadStream("./data/raw.jsonl");
 
+/**
+ * Log information about the schema-types present in a blender benchmark export.
+ */
 async function processLines() {
 	let res = [];
 
