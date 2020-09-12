@@ -14,9 +14,7 @@ async function processLineByLine(fileStream) {
 		lineNum = 0;
 
 	// The file is a JSON-L file so it should be processed line-by-line
-	let rl = readline.createInterface({
-		input: fileStream,
-	});
+	let rl = readline.createInterface({ input: fileStream });
 
 	let startProcess = new Date().getTime();
 	for await (let line of rl) {
@@ -26,7 +24,7 @@ async function processLineByLine(fileStream) {
 			benchmark.schema_version === "v2"
 		) {
 			let scenes = benchmark.data.scenes;
-			scenes.forEach((scene) => {
+			scenes.forEach(scene => {
 				if (scene.stats.result === "OK") {
 					let dev =
 						benchmark.schema_version === "v1"
@@ -44,13 +42,13 @@ async function processLineByLine(fileStream) {
 						device: dev,
 						type: benchmark.data.device_info.device_type,
 						scene: scene.name,
-						time: scene.stats.total_render_time,
+						time: scene.stats.total_render_time
 					});
 				}
 			});
 		} else {
 			let launches = benchmark.data;
-			launches.forEach((run) => {
+			launches.forEach(run => {
 				let dev = run.device_info.compute_devices[0].name;
 
 				if (dev === "") {
@@ -63,7 +61,7 @@ async function processLineByLine(fileStream) {
 					device: dev,
 					type: run.device_info.compute_devices[0].type,
 					scene: run.scene.label,
-					time: run.stats.total_render_time,
+					time: run.stats.total_render_time
 				});
 			});
 		}
@@ -80,15 +78,14 @@ async function processLineByLine(fileStream) {
 	try {
 		let fileStream = fs.createReadStream("./data/raw.jsonl");
 
-		// inserting values into the db goes much faster when inside a transaction
-		let createTable = db.prepare(
-			`CREATE TABLE IF NOT EXISTS blender (
+		// inserting values into the db goes much faster when inside a
+		// transaction
+		let createTable = db.prepare(`CREATE TABLE IF NOT EXISTS blender (
 				device TEXT,
 				type TEXT,
 				scene TEXT,
 				time REAL
-			)`
-		);
+			)`);
 
 		createTable.run();
 		let deleteRows = db.prepare(`DELETE FROM blender`);
@@ -101,7 +98,7 @@ async function processLineByLine(fileStream) {
 		});
 
 		// The inserting seems to go much faster inside a transaction
-		let insert = db.transaction((trials) => {
+		let insert = db.transaction(trials => {
 			for (let trial of trials) {
 				putRow.run(
 					trial["device"],

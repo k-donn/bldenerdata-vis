@@ -12,8 +12,13 @@
 	},
 	"author": "k-donn",
 	"repository": {
-		"url": "https://github.com/k-donn/blenderdata-vis"
+		"type": "git",
+		"url": "git+ssh://git@github.com/k-donn/blenderdata-vis.git"
 	},
+	"bugs": {
+		"url": "https://github.com/k-donn/blenderdata-vis/issues"
+	},
+	"homepage": "https://github.com/k-donn/blenderdata-vis#readme",
 	"license": "MIT",
 	"dependencies": {
 		"better-sqlite3": "^7.0.1"
