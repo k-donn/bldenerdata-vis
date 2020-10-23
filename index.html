@@ -25,6 +25,7 @@
 	</head>
 	<body>
 		<div class="container my-2">
+			<h2>Data courtesy of <a href="https://opendata.blender.org">opendata.blender.org</a></h2>
 			<form autocomplete="off" id="device-form" action="#">
 				<div id="fields">
 					<div class="form-group">
@@ -215,10 +216,10 @@
 		 * @param {string[]} devices List of devices
 		 */
 		function createParams(devices) {
-			let params = `?dev0=${devices[0]}`;
+			let params = `?dev0=${encodeURIComponent(devices[0])}`;
 			for (let i = 1; i < devices.length; i++) {
 				let device = devices[i];
-				params += `&dev${i}=${device}`;
+				params += `&dev${i}=${encodeURIComponent(device)}`;
 			}
 			return params;
 		}
