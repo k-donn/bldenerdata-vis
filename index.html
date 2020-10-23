@@ -25,7 +25,7 @@
 	</head>
 	<body>
 		<div class="container my-2">
-			<form autocomplete="off" id="device-form">
+			<form autocomplete="off" id="device-form" action="#">
 				<div id="fields">
 					<div class="form-group">
 						<label for="device-input0">Device 0</label>
@@ -35,6 +35,9 @@
 						/>
 					</div>
 				</div>
+				<button type="button" class="btn btn-success" id="add-device">
+					Add device
+				</button>
 				<button
 					type="submit"
 					id="device-submit"
@@ -43,7 +46,6 @@
 					Submit
 				</button>
 			</form>
-			<button class="btn btn-success" id="add-device">Add device</button>
 		</div>
 		<div class="container-fluid overflow-auto">
 			<div
@@ -95,8 +97,10 @@
 				e.preventDefault();
 
 				// Fields are indexed from zero
-				$(fields).append(`<div class="form-group">
+				$(fields)
+					.append(`<div id="device${inputs.length}" class="form-group">
 									<label for="device-input${inputs.length}">Device ${inputs.length}</label>
+									<button type="button" class="btn btn-sm btn-danger" onclick="removeDevice(${inputs.length})">Remove</button>
 									<input
 										class="form-control custom-autocomplete"
 										id="device-input${inputs.length}"
@@ -115,6 +119,14 @@
 				e.preventDefault();
 				getBlenderData(inputs.map((i, el) => el.value));
 			});
+		}
+
+		function removeDevice(index) {
+			$(`#device${index}`).remove();
+
+			inputs = $(`[id^="device-input"]`);
+
+			inputs.each((_, el) => createAutocomplete(el));
 		}
 
 		/**
